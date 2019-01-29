@@ -12,6 +12,12 @@ import com.welld.programming.test.pointsonaline.model.PointsOrder;
 
 @Service
 public class PointManager {
+	
+	/*
+	 * Using the default singleton scope of Spring, Spring ensure there is only one bean PointManager.
+	 * Consequently there is only one LinkedList of points in the running application.
+	 * Using "synchronized" methods it is ensured only one call is executed at the same time over the list of points.
+	 */ 
 
 	private LinkedList<Point> points = new LinkedList<Point>();
 
@@ -21,22 +27,42 @@ public class PointManager {
 			throw new IOException("Point is not valid.");
 		}
 		
-		// It can be optimised using an algorithm to split the list likewise quick sort
+		if ( points.isEmpty() ) {
+			 points.add(point);
+		} else {
+			addPointInSubList(point, 0, points.size()-1);
+		}
+	}
+	
+	private void addPointInSubList(Point point, int firstIndex, int lastIndex) {
 		
-		int i = 0;
-		for ( ; i < points.size(); i++ ) {
-			Point currentPoint = points.get(i);
-			int compareResult = currentPoint.compareTo(point); 
-			if ( compareResult >= 0 ) {
-				if ( compareResult > 0 ) {
-					points.add(i, point);
-				}
-				break;
+		// Like Quick Sort split the list and work on the matching half of the list.
+		
+		Double firstOffset = points.get(firstIndex).getOffset();
+		Double lastOffset = points.get(lastIndex).getOffset();
+		Double pointOffset = point.getOffset();
+		
+		if ( pointOffset.equals(firstOffset) || pointOffset.equals(lastOffset) ) {
+			// first point or last point (or both) have the same offset of the passed point, this point already exist.
+			return;
+		} else if ( firstIndex == lastIndex ) {
+			// only one point in the sub list (and the point is not equal to the passed one), 
+			// add the passed point to the left or to the right
+			points.add( firstOffset > pointOffset ? firstIndex : firstIndex + 1, point);
+			return;
+		} else {
+			// split the list, and call recursively the method on the appropriate sub-list
+			int middleIndex = (lastIndex + firstIndex) / 2;
+			Double middleOffset = points.get(middleIndex).getOffset();
+			
+			if ( pointOffset <= middleOffset ) {
+				addPointInSubList(point, firstIndex, middleIndex);
+			} else {
+				addPointInSubList(point, middleIndex+1, lastIndex);
 			}
 		}
-		if ( points.size() == i ) {
-			points.add(point);
-		}
+		
+		return;
 	}
 
 	public synchronized List<Point> getAll(PointsOrder pointsOrder) {
@@ -51,7 +77,7 @@ public class PointManager {
 
 	public synchronized void deleteAll() {
 
-		points = new LinkedList<Point>();
+		points.clear();
 	}
 
 	public synchronized List<Point> getNeighbours(Double pointOffset, Integer k) throws IOException{
